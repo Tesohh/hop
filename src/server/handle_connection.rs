@@ -1,10 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
-    sync::Mutex,
-};
+use tokio::{io::AsyncReadExt, net::TcpStream, sync::Mutex};
 
 use crate::transport::{Command, Request};
 
@@ -25,6 +21,11 @@ pub async fn handle_connection(
     let mut s = server.lock().await;
     s.conns.entry(addr).or_insert(conn.clone());
     drop(s); // manually unlock the mutex for the server
+
+    conn.send_request(Request {
+        command: Command::ArchaicSendMessage("Welcome".into()),
+    })
+    .await?;
 
     loop {
         let r_locked = conn.r.clone();

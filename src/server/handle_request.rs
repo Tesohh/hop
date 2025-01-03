@@ -8,21 +8,24 @@ use crate::transport::{Command, Request};
 use super::{userconn::UserConn, Server};
 
 pub async fn handle_request(
-    server: Arc<Mutex<Server>>,
-    conn: Arc<UserConn>,
+    _server: Arc<Mutex<Server>>,
+    _conn: Arc<UserConn>,
     request: Request,
 ) -> Result<()> {
     match request.command {
         Command::NoOp => Ok(()),
 
-        Command::ArchaicSendMessage { content, broadcast } => {
-            Ok(log::info!("{}", String::from_utf8_lossy(&content)))
+        Command::ArchaicSendMessage(content) => {
+            log::info!("{}", String::from_utf8_lossy(&content));
+            Ok(())
         }
 
         Command::SendMessage {
-            channel_id,
-            content,
+            channel_id: _,
+            content: _,
         } => todo!(),
+
+        _ => Ok(()),
     }
 }
 

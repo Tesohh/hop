@@ -1,24 +1,27 @@
+use std::borrow::Borrow;
+
 use anyhow::{Context, Result};
-use ratatui::crossterm::event::{self, Event};
-use ratatui::{DefaultTerminal, Frame};
+use rmp_serde::Serializer;
+use serde::Serialize;
+use tokio::{io::AsyncWriteExt, net::TcpStream};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let terminal = ratatui::init();
-    let result = run(terminal);
-    ratatui::restore();
-    result
-}
+    let mut stream = TcpStream::connect("localhost:3080")
+        .await
+        .expect("Unable to connect to server");
 
-fn run(mut terminal: DefaultTerminal) -> Result<()> {
-    loop {
-        terminal.draw(render)?;
-        if matches!(event::read()?, Event::Key(_)) {
-            break Ok(());
-        }
-    }
-}
+    let req = hop::transport::Request {
+        command: hop::transport::Command::ArchaicSendMessage {
+            content: "Harris".into(),
+            broadcast: false,
+        },
+    };
 
-fn render(frame: &mut Frame) {
-    frame.render_widget("hello world", frame.area());
+    let mut buf = Vec::new();
+    req.serialize(&mut Serializer::new(&mut buf))?;
+
+    stream.write_all(&buf).await?;
+
+    Ok(())
 }

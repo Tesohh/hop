@@ -1,4 +1,5 @@
 pub mod handle_connection;
+pub mod handle_request;
 pub mod userconn;
 
 use std::{collections::HashMap, sync::Arc};

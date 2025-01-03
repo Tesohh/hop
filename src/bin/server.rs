@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv()?;
+    pretty_env_logger::init();
 
     let db = hop::db::connect::connect().await?;
 

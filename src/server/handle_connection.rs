@@ -26,10 +26,6 @@ pub async fn handle_connection(
     s.conns.entry(addr).or_insert(conn.clone());
     drop(s); // manually unlock the mutex for the server
 
-    let mut w = conn.w.lock().await;
-    w.write_all("Welcome to hop\n".as_bytes()).await?;
-    drop(w); // manually unlock the writer mutex
-
     loop {
         let r_locked = conn.r.clone();
         let mut r = r_locked.lock().await;

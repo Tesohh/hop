@@ -1,7 +1,13 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
-#[derive(Debug)]
+use tokio::{
+    net::tcp::{OwnedReadHalf, OwnedWriteHalf},
+    sync::Mutex,
+};
+
+#[derive(Debug, Clone)]
 pub struct UserConn {
-    pub socket: tokio::net::TcpStream,
+    pub r: Arc<Mutex<OwnedReadHalf>>,
+    pub w: Arc<Mutex<OwnedWriteHalf>>,
     pub addr: SocketAddr,
 }

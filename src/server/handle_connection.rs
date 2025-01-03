@@ -8,33 +8,62 @@ use tokio::{
 
 use super::{userconn::UserConn, Server};
 
-pub async fn handle_connection(server: Arc<Mutex<Server>>, socket: TcpStream, addr: SocketAddr) {
+pub async fn handle_connection(
+    server: Arc<Mutex<Server>>,
+    socket: TcpStream,
+    addr: SocketAddr,
+) -> anyhow::Result<()> {
+    let (r, w) = socket.into_split();
+    let conn = Arc::new(UserConn {
+        r: Arc::new(Mutex::new(r)),
+        w: Arc::new(Mutex::new(w)),
+        addr,
+    });
+
     let mut s = server.lock().await;
-
-    let conn = Arc::new(Mutex::new(UserConn { socket, addr }));
-
-    // add conn to the server's hashmap
     s.conns.entry(addr).or_insert(conn.clone());
-    drop(s); // free mutex to the server so other connections may use it
+    drop(s); // manually unlock the mutex for the server
 
-    let mut conn = conn.lock().await;
-    let _ = conn.socket.write_all("Welcome to hop\n".as_bytes()).await;
+    let mut w = conn.w.lock().await;
+    w.write_all("Welcome to hop\n".as_bytes()).await?;
+    drop(w); // manually unlock the writer mutex
 
     loop {
         let mut buf = [0u8; 1024];
 
-        let n = conn
-            .socket
-            .read(&mut buf)
-            .await
-            .expect("failed to read data from socket");
+        let r_locked = conn.r.clone();
+        let mut r = r_locked.lock().await;
 
+        let n = r.read(&mut buf).await?;
         if n == 0 {
             break;
         }
 
-        conn.socket.try_write(&buf).expect("failed to write data");
+        let s = server.lock().await;
+        let mut handles = vec![];
+
+        let filtered_conns = s
+            .conns
+            .iter()
+            .filter(|(other_addr, _)| **other_addr != addr);
+
+        for (other_addr, conn) in filtered_conns {
+            let conn = Arc::clone(conn);
+            let str = format!(
+                "Received msg from {other_addr}: {}",
+                String::from_utf8_lossy(&buf)
+            );
+
+            handles.push(tokio::spawn(async move {
+                let sock = &mut conn.w.lock().await;
+                sock.write_all(str.as_bytes()).await
+            }));
+        }
+
+        for handle in handles {
+            handle.await??;
+        }
     }
 
-    println!("Closed connection to {}.", conn.addr)
+    Ok(())
 }

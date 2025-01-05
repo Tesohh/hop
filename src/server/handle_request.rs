@@ -16,7 +16,19 @@ pub async fn handle_request(
         Command::NoOp => Ok(()),
 
         Command::ArchaicSendMessage(content) => {
-            log::info!("{}", String::from_utf8_lossy(&content));
+            log::info!("{}", content);
+            conn.send_request(Request {
+                command: Command::Error("lorem impsum".into(), ErrorLevel::Info),
+            })
+            .await?;
+            conn.send_request(Request {
+                command: Command::Error("lorem impsum".into(), ErrorLevel::Warning),
+            })
+            .await?;
+            conn.send_request(Request {
+                command: Command::Error("lorem impsum".into(), ErrorLevel::Error),
+            })
+            .await?;
             Ok(())
         }
 
@@ -28,28 +40,3 @@ pub async fn handle_request(
         }
     }
 }
-
-// let s = server.lock().await;
-// let mut handles = vec![];
-//
-// let filtered_conns = s
-//     .conns
-//     .iter()
-//     .filter(|(other_addr, _)| **other_addr != addr);
-//
-// for (other_addr, conn) in filtered_conns {
-//     let conn = Arc::clone(conn);
-//     let str = format!(
-//         "Received msg from {other_addr}: {}",
-//         String::from_utf8_lossy(&buf)
-//     );
-//
-//     handles.push(tokio::spawn(async move {
-//         let sock = &mut conn.w.lock().await;
-//         sock.write_all(str.as_bytes()).await
-//     }));
-// }
-//
-// for handle in handles {
-//     handle.await??;
-// }

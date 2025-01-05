@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use hop::client::{
     self,
@@ -6,7 +8,7 @@ use hop::client::{
     reads::{read_from_server, read_from_terminal},
     ServerConn,
 };
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, sync::Mutex};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,7 +17,12 @@ async fn main() -> Result<()> {
             .await
             .expect("Unable to connect to server");
 
-        ServerConn { socket: stream }
+        let (r, w) = stream.into_split();
+
+        Arc::new(ServerConn {
+            r: Arc::new(Mutex::new(r)),
+            w: Arc::new(Mutex::new(w)),
+        })
     };
 
     let config_read_fut = async {
@@ -32,12 +39,20 @@ async fn main() -> Result<()> {
         }
     };
 
-    let (mut conn, config) = tokio::join!(server_conn_fut, config_read_fut);
+    let (conn, config) = tokio::join!(server_conn_fut, config_read_fut);
 
     loop {
+        println!("waiting for some input");
         let handle = tokio::select! {
-            line = read_from_terminal() => handle_terminal(&mut conn, line),
-            request = read_from_server(&mut conn) => handle_request(&mut conn, request)
+            line = read_from_terminal() => handle_terminal(conn.clone(), line).await,
+            // TODO: Cleanup
+            requests = read_from_server(conn.clone()) => async {
+                let requests = requests?;
+                for request in requests.into_iter().flatten() {
+                    handle_request(conn.clone(), request).await?;
+                }
+                Ok(())
+            }.await
         };
 
         if let Err(err) = handle {

@@ -1,7 +1,16 @@
+use std::sync::Arc;
+
 use anyhow::Result;
+
+use crate::transport::{Command, Request};
 
 use super::ServerConn;
 
-pub fn handle_terminal(conn: &mut ServerConn, line: String) -> Result<()> {
+pub async fn handle_terminal(conn: Arc<ServerConn>, line: String) -> Result<()> {
+    println!("Read something from terminal!");
+    conn.send_request(Request {
+        command: Command::ArchaicSendMessage(String::from("hwiefjiow")),
+    })
+    .await?;
     Ok(())
 }

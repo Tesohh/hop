@@ -26,6 +26,8 @@ impl UserConn {
         let mut buf = Vec::new();
         request.serialize(&mut Serializer::new(&mut buf))?;
 
+        // TODO: Do this also on the other side
+        w.write_u64(buf.len().try_into()?).await?;
         w.write_all(&buf).await?;
 
         Ok(())

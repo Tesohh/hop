@@ -20,17 +20,22 @@ pub async fn read_from_terminal() -> String {
 pub async fn read_from_server(conn: Arc<ServerConn>) -> Result<Vec<Option<Request>>> {
     let mut r = conn.r.lock().await;
 
-    let mut buf = [0u8; 1024];
+    let mut buf = [0u8; 4096];
     let n: u64 = r.read(&mut buf).await?.try_into()?;
-
     let mut requests: Vec<Option<Request>> = vec![];
 
     let mut cursor = Cursor::new(&buf);
     while cursor.position() <= n {
-        let expected_n: usize = cursor.read_u64().await?.try_into()?;
+        let mut len_buf = [0u8; 8];
+
+        AsyncReadExt::read_exact(&mut cursor, &mut len_buf).await?;
+        let zest_n = u64::from_be_bytes(len_buf);
+        let expected_n: usize = zest_n.try_into()?;
         if expected_n == 0 {
             break;
         }
+
+        dbg!(zest_n, expected_n);
 
         if expected_n > 1024 {
             println!("Received a HUGE packet! ({expected_n} bytes)");
@@ -43,8 +48,6 @@ pub async fn read_from_server(conn: Arc<ServerConn>) -> Result<Vec<Option<Reques
         if actual_n == 0 {
             break;
         }
-
-        dbg!(expected_n, actual_n);
 
         if actual_n != expected_n {
             bail!("actual_n ({actual_n}) != expected_n ({expected_n})")

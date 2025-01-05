@@ -8,8 +8,6 @@ use super::ServerConn;
 
 pub async fn handle_request(conn: Arc<ServerConn>, request: Request) -> Result<()> {
     // let request = request?.context("tried to handle None request")?;
-    //
-    dbg!(&request);
 
     match request.command {
         Command::NoOp => Ok(()),

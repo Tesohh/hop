@@ -19,6 +19,7 @@ pub struct UserConn {
 }
 
 impl UserConn {
+    // TODO: make this into a trait, and also a trait to read
     pub async fn send_request(&self, request: Request) -> Result<()> {
         let w_locked = self.w.clone();
         let mut w = w_locked.lock().await;
@@ -27,8 +28,12 @@ impl UserConn {
         request.serialize(&mut Serializer::new(&mut buf))?;
 
         // TODO: Do this also on the other side
-        w.write_u64(buf.len().try_into()?).await?;
+        let zest_len = buf.len().try_into()?;
+        dbg!(buf.len());
+        dbg!(zest_len);
+        w.write_u64(zest_len).await?;
         w.write_all(&buf).await?;
+        w.flush().await?;
 
         Ok(())
     }

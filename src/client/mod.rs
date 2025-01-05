@@ -1,3 +1,5 @@
+pub mod config;
+pub mod reads;
 pub mod serverconn;
 pub use serverconn::ServerConn;
 

@@ -17,25 +17,36 @@ pub async fn read_from_terminal() -> String {
 }
 
 // TODO: Move this into a function that may be used by server too
+// FIX: Sometimes, may receive a very large number as a expected_n
+// FIX: Try to make sure that packets are NEVER "merged", so that you don't even have to deal with
+// this bullshit
 pub async fn read_from_server(conn: Arc<ServerConn>) -> Result<Vec<Option<Request>>> {
     let mut r = conn.r.lock().await;
 
     let mut buf = [0u8; 4096];
     let n: u64 = r.read(&mut buf).await?.try_into()?;
     let mut requests: Vec<Option<Request>> = vec![];
+    println!(
+        "{:?}",
+        buf.into_iter().filter(|c| *c != 0).collect::<Vec<u8>>()
+    );
+
+    // Change This To while r.read_u64()
+    // The problem is that sometimes, the size prefix is sent separately to the rest
+    // So the first 8 bytes are realy a string, but get interpreted as a huge numbr
+    // Also make this a trait
 
     let mut cursor = Cursor::new(&buf);
     while cursor.position() <= n {
         let mut len_buf = [0u8; 8];
 
         AsyncReadExt::read_exact(&mut cursor, &mut len_buf).await?;
-        let zest_n = u64::from_be_bytes(len_buf);
-        let expected_n: usize = zest_n.try_into()?;
+        let conv_n = u64::from_be_bytes(len_buf);
+
+        let expected_n: usize = conv_n.try_into()?;
         if expected_n == 0 {
             break;
         }
-
-        dbg!(zest_n, expected_n);
 
         if expected_n > 1024 {
             println!("Received a HUGE packet! ({expected_n} bytes)");

@@ -4,7 +4,7 @@ use anyhow::Result;
 use rmp_serde::Serializer;
 use serde::Serialize;
 use tokio::{
-    io::AsyncWriteExt,
+    io::{AsyncWriteExt, BufWriter},
     net::tcp::{OwnedReadHalf, OwnedWriteHalf},
     sync::Mutex,
 };
@@ -28,11 +28,35 @@ impl UserConn {
         request.serialize(&mut Serializer::new(&mut buf))?;
 
         // TODO: Do this also on the other side
-        let zest_len = buf.len().try_into()?;
+        let conv_len: u64 = buf.len().try_into()?;
         dbg!(buf.len());
-        dbg!(zest_len);
-        w.write_u64(zest_len).await?;
-        w.write_all(&buf).await?;
+        dbg!(conv_len);
+
+        let x = conv_len.to_be_bytes();
+        w.write_all(&x).await?;
+        dbg!(x);
+
+        // w.write_u64(conv_len).await?;
+        //
+        // // Just for debugging purposes
+        // let mut len_buf = Vec::new();
+        // len_buf.write_u64(conv_len).await?;
+        //
+        // println!(
+        //     "{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}",
+        //     len_buf[0],
+        //     len_buf[1],
+        //     len_buf[2],
+        //     len_buf[3],
+        //     len_buf[4],
+        //     len_buf[5],
+        //     len_buf[6],
+        //     len_buf[7]
+        // );
+        //
+        // w.write_all(&buf).await?;
+
+        let _n = w.write_all(&buf).await?;
         w.flush().await?;
 
         Ok(())

@@ -3,6 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use hop::server::handle_connection::handle_connection;
 use tokio::sync::Mutex;
 
+// FIX: Uses a ton of energy on my system
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv()?;

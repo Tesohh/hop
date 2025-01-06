@@ -1,28 +1,39 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use rmp_serde::Serializer;
-use serde::Serialize;
 use tokio::{
-    io::AsyncWriteExt,
-    net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-    sync::Mutex,
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
+    sync::{Mutex, MutexGuard},
 };
 
-use crate::transport::Request;
+use crate::transport::conn::{ConnRead, ConnWrite};
 
 #[derive(Debug, Clone)]
 pub struct ServerConn {
-    pub r: Arc<Mutex<OwnedReadHalf>>,
-    pub w: Arc<Mutex<OwnedWriteHalf>>,
+    r: Arc<Mutex<OwnedReadHalf>>,
+    w: Arc<Mutex<OwnedWriteHalf>>,
 }
 
 impl ServerConn {
-    pub async fn send_request(&self, request: Request) -> Result<()> {
-        let mut buf = Vec::new();
-        request.serialize(&mut Serializer::new(&mut buf))?;
+    pub fn new(stream: TcpStream) -> Self {
+        let (r, w) = stream.into_split();
+        ServerConn {
+            r: Arc::new(Mutex::new(r)),
+            w: Arc::new(Mutex::new(w)),
+        }
+    }
+}
 
-        self.w.lock().await.write_all(&buf).await?;
-        Ok(())
+impl ConnRead for ServerConn {
+    async fn reader(&self) -> MutexGuard<'_, OwnedReadHalf> {
+        self.r.lock().await
+    }
+}
+
+impl ConnWrite for ServerConn {
+    async fn writer(&self) -> MutexGuard<'_, OwnedWriteHalf> {
+        self.w.lock().await
     }
 }

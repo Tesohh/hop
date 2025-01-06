@@ -1,64 +1,39 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::sync::Arc;
 
-use anyhow::Result;
-use rmp_serde::Serializer;
-use serde::Serialize;
 use tokio::{
-    io::{AsyncWriteExt, BufWriter},
-    net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-    sync::Mutex,
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
+    sync::{Mutex, MutexGuard},
 };
 
-use crate::transport::Request;
+use crate::transport::conn::{ConnRead, ConnWrite};
 
 #[derive(Debug, Clone)]
 pub struct UserConn {
-    pub r: Arc<Mutex<OwnedReadHalf>>,
-    pub w: Arc<Mutex<OwnedWriteHalf>>,
-    pub addr: SocketAddr,
+    r: Arc<Mutex<OwnedReadHalf>>,
+    w: Arc<Mutex<OwnedWriteHalf>>,
 }
 
 impl UserConn {
-    // TODO: make this into a trait, and also a trait to read
-    pub async fn send_request(&self, request: Request) -> Result<()> {
-        let w_locked = self.w.clone();
-        let mut w = w_locked.lock().await;
+    pub fn new(stream: TcpStream) -> Self {
+        let (r, w) = stream.into_split();
+        UserConn {
+            r: Arc::new(Mutex::new(r)),
+            w: Arc::new(Mutex::new(w)),
+        }
+    }
+}
 
-        let mut buf = Vec::new();
-        request.serialize(&mut Serializer::new(&mut buf))?;
+impl ConnRead for UserConn {
+    async fn reader(&self) -> MutexGuard<'_, OwnedReadHalf> {
+        self.r.lock().await
+    }
+}
 
-        // TODO: Do this also on the other side
-        let conv_len: u64 = buf.len().try_into()?;
-        dbg!(buf.len());
-        dbg!(conv_len);
-
-        let x = conv_len.to_be_bytes();
-        w.write_all(&x).await?;
-        dbg!(x);
-
-        // w.write_u64(conv_len).await?;
-        //
-        // // Just for debugging purposes
-        // let mut len_buf = Vec::new();
-        // len_buf.write_u64(conv_len).await?;
-        //
-        // println!(
-        //     "{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}{:8b}",
-        //     len_buf[0],
-        //     len_buf[1],
-        //     len_buf[2],
-        //     len_buf[3],
-        //     len_buf[4],
-        //     len_buf[5],
-        //     len_buf[6],
-        //     len_buf[7]
-        // );
-        //
-        // w.write_all(&buf).await?;
-
-        let _n = w.write_all(&buf).await?;
-        w.flush().await?;
-
-        Ok(())
+impl ConnWrite for UserConn {
+    async fn writer(&self) -> MutexGuard<'_, OwnedWriteHalf> {
+        self.w.lock().await
     }
 }

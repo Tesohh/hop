@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::Mutex;
 
-use crate::transport::{request::ErrorLevel, Command, Request};
+use crate::transport::{conn::ConnWrite, request::ErrorLevel, Command, Request};
 
 use super::{userconn::UserConn, Server};
 
@@ -17,15 +17,15 @@ pub async fn handle_request(
 
         Command::ArchaicSendMessage(content) => {
             log::info!("{}", content);
-            conn.send_request(Request {
+            conn.write(Request {
                 command: Command::Error("lorem impsum".into(), ErrorLevel::Info),
             })
             .await?;
-            conn.send_request(Request {
+            conn.write(Request {
                 command: Command::Error("lorem impsum".into(), ErrorLevel::Warning),
             })
             .await?;
-            conn.send_request(Request {
+            conn.write(Request {
                 command: Command::Error("lorem impsum".into(), ErrorLevel::Error),
             })
             .await?;
@@ -33,7 +33,7 @@ pub async fn handle_request(
         }
 
         _ => {
-            conn.send_request(Request {
+            conn.write(Request {
                 command: Command::Error("unknown command".into(), ErrorLevel::Error),
             })
             .await

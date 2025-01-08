@@ -5,7 +5,7 @@ use serde::Serialize;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-    sync::MutexGuard,
+    sync::{mpsc, MutexGuard},
 };
 
 use super::Request;
@@ -13,10 +13,9 @@ use super::Request;
 pub trait ConnRead {
     fn reader(&self) -> impl Future<Output = MutexGuard<'_, OwnedReadHalf>>;
 
-    fn read(&self) -> impl Future<Output = Result<Vec<Request>>> {
+    fn read(&self, tx: mpsc::Sender<Request>) -> impl Future<Output = Result<()>> {
         async move {
             let mut reader = self.reader().await;
-            let mut requests: Vec<Request> = vec![];
 
             while let Ok(expected_n) = reader.read_u64().await {
                 log::debug!("received something!");
@@ -36,15 +35,14 @@ pub trait ConnRead {
 
                 let request: Option<Request> = rmp_serde::from_slice(&payload).ok();
                 match request {
-                    Some(request) => requests.push(request),
+                    Some(request) => tx.send(request).await?,
                     None => log::warn!("unparsable request"),
                 }
 
                 log::debug!("everything good!");
-                log::debug!("requests length: {}", requests.len());
             }
 
-            Ok(requests)
+            Ok(())
         }
     }
 }

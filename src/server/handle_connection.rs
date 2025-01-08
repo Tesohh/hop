@@ -25,13 +25,20 @@ pub async fn handle_connection(
     })
     .await?;
 
-    loop {
-        let requests = conn.read().await?;
-        log::debug!("Requests to handle: {requests:?}");
-        for request in requests {
-            log::debug!("attempting to handle {request:?}");
-            handle_request(server.clone(), conn.clone(), request).await?
+    let (tx, mut rx) = tokio::sync::mpsc::channel(4096);
+
+    let conn_clone = conn.clone();
+    let _read_handle = tokio::spawn(async move {
+        let result = conn_clone.read(tx).await;
+        if let Err(err) = result {
+            log::error!("{err}");
+            // FIX: Handle properly
+            // FIX: And disconnect the tx on EOF
         }
+    });
+
+    while let Some(request) = rx.recv().await {
+        handle_request(server.clone(), conn.clone(), request).await?;
     }
 
     // TEMP:

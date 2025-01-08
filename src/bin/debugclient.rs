@@ -35,6 +35,6 @@ async fn main() -> anyhow::Result<()> {
     })
     .await?;
 
-    tokio::time::sleep(Duration::from_secs(4)).await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
     Ok(())
 }

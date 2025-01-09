@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use tokio::{
+    io::{AsyncBufReadExt as _, BufReader},
     net::TcpStream,
     sync::mpsc::{Receiver, Sender},
 };
@@ -9,8 +10,7 @@ use tokio::{
 use crate::transport::{conn::ConnRead, Request};
 
 use super::{
-    config::Config, handle_request::handle_request, handle_terminal::handle_terminal,
-    reads::read_from_terminal, ServerConn,
+    config::Config, handle_request::handle_request, handle_terminal::handle_terminal, ServerConn,
 };
 
 pub async fn server_conn_task() -> Arc<ServerConn> {
@@ -41,7 +41,10 @@ pub async fn read_conn_task(conn: Arc<ServerConn>, tx: Sender<Request>) -> Resul
 
 pub async fn read_and_handle_terminal_task(conn: Arc<ServerConn>) -> Result<()> {
     loop {
-        let line = read_from_terminal().await?;
+        let mut buf = String::new();
+        let mut reader = BufReader::new(tokio::io::stdin());
+        reader.read_line(&mut buf).await?;
+        let line = buf.trim().to_string();
         handle_terminal(conn.clone(), line).await?;
     }
 }

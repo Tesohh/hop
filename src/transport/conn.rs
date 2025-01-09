@@ -18,28 +18,22 @@ pub trait ConnRead {
             let mut reader = self.reader().await;
 
             while let Ok(expected_n) = reader.read_u64().await {
-                log::debug!("received something!");
                 if expected_n == 0 {
-                    log::debug!(".. but expected_n");
                     break;
                 }
 
                 let expected_n: usize = expected_n.try_into()?;
                 anyhow::ensure!(expected_n <= 1024);
-                log::debug!("expected_n is below 1024");
 
                 let mut payload = vec![0u8; expected_n];
                 let actual_n = reader.read_exact(&mut payload).await?;
                 anyhow::ensure!(expected_n == actual_n);
-                log::debug!("expected_n is actual_n");
 
                 let request: Option<Request> = rmp_serde::from_slice(&payload).ok();
                 match request {
                     Some(request) => tx.send(request).await?,
                     None => log::warn!("unparsable request"),
                 }
-
-                log::debug!("everything good!");
             }
 
             Ok(())

@@ -18,7 +18,7 @@ pub async fn handle_request(_conn: Arc<ServerConn>, request: Request) -> Result<
             Ok(())
         }
         Command::ClientDisconnect => todo!(),
-        Command::ClientDisconnectWithReason(reason) => todo!(),
+        Command::ClientDisconnectWithReason(_reason) => todo!(),
 
         _ => Ok(()),
     }

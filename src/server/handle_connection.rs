@@ -41,7 +41,5 @@ pub async fn handle_connection(
         handle_request(server.clone(), conn.clone(), request).await?;
     }
 
-    // TEMP:
-    #[allow(unreachable_code)]
     Ok(())
 }

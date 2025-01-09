@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use hop::client::{
-    self,
-    handle_request::handle_request,
-    handle_terminal::handle_terminal,
-    reads::{read_from_server, read_from_terminal},
-    ServerConn,
+use hop::{
+    client::{
+        self, handle_request::handle_request, handle_terminal::handle_terminal,
+        reads::read_from_terminal, ServerConn,
+    },
+    transport::conn::ConnRead,
 };
-use tokio::{net::TcpStream, sync::Mutex};
+use tokio::net::TcpStream;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -17,12 +17,7 @@ async fn main() -> Result<()> {
             .await
             .expect("Unable to connect to server");
 
-        let (r, w) = stream.into_split();
-
-        Arc::new(ServerConn {
-            r: Arc::new(Mutex::new(r)),
-            w: Arc::new(Mutex::new(w)),
-        })
+        Arc::new(ServerConn::new(stream))
     };
 
     let config_read_fut = async {
@@ -39,28 +34,32 @@ async fn main() -> Result<()> {
         }
     };
 
-    let (conn, config) = tokio::join!(server_conn_fut, config_read_fut);
+    let (conn, _config) = tokio::join!(server_conn_fut, config_read_fut);
+    let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(4096);
 
-    loop {
-        println!("waiting for some input");
-        let handle = tokio::select! {
-            line = read_from_terminal() => handle_terminal(conn.clone(), line).await,
-            // TODO: Cleanup
-            requests = read_from_server(conn.clone()) => async {
-                let requests = requests?;
-                for request in requests.into_iter().flatten() {
-                    handle_request(conn.clone(), request).await?;
-                }
-                Ok(())
-            }.await
-        };
-
-        if let Err(err) = handle {
-            println!("{err}");
-            break;
+    let conn_clone = conn.clone();
+    let _read_handle = tokio::spawn(async move {
+        let result = conn_clone.read(request_tx).await;
+        if let Err(err) = result {
+            log::error!("{err}"); // TODO: Add better error handling
         }
+    });
+
+    let conn_clone = conn.clone();
+    tokio::spawn(async move {
+        while let Ok(str) = read_from_terminal().await {
+            let result = handle_terminal(conn_clone.clone(), str).await;
+            if let Err(err) = result {
+                log::error!("{err}"); // TODO: Add better error handling
+                break;
+            }
+        }
+    });
+
+    while let Some(request) = request_rx.recv().await {
+        dbg!(&request);
+        handle_request(conn.clone(), request).await?;
     }
 
-    drop(conn);
     std::process::exit(0);
 }

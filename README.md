@@ -1,24 +1,10 @@
 # hop
 
-Terminal discord clone with vim keybindings written in Rust
+Terminal chat client written in Rust
 
 ## Why
 
-This project has no real world use: it's just for me to learn rust better, 
-and get more comfortable with network programming in general.
-
-## Stack
-
-Server:
-- std::net for TCP
-- sqlx and sqlite
-
-Client:
-- ratatui
-
-Both:
-- tokio
-- anyhow
+This project has no real world use: it's just for me to learn rust, async/await, network programming.
 
 ## How it works
 

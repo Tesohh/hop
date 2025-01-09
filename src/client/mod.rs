@@ -1,6 +1,7 @@
 pub mod config;
 pub mod reads;
 pub mod serverconn;
+pub mod startuptasks;
 pub use serverconn::ServerConn;
 
 pub mod handle_request;

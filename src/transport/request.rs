@@ -1,6 +1,8 @@
 use owo_colors::OwoColorize as _;
 use serde::{Deserialize, Serialize};
 
+use crate::client::config::Login;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorLevel {
     Info,
@@ -30,7 +32,7 @@ pub enum Command {
     SendMessage { channel_id: u64, content: String },
     ClientDisconnect,
     ClientDisconnectWithReason(String),
-    LoginAttempt(crate::client::config::Login),
+    LoginAttempt(Login),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

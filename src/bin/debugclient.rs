@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use hop::{
-    client::ServerConn,
+    client::{config::Login, ServerConn},
     transport::{conn::ConnWrite, Command, Request},
 };
 use tokio::net::TcpStream;
@@ -15,25 +15,14 @@ async fn main() -> anyhow::Result<()> {
     let conn = Arc::new(ServerConn::new(stream));
 
     conn.write(Request {
-        command: Command::ArchaicSendMessage(String::from("HARRIS 1")),
+        command: Command::LoginAttempt(Login {
+            username: "kalewi".into(),
+            password: "kalewi".into(),
+        }),
     })
     .await?;
-    conn.write(Request {
-        command: Command::ArchaicSendMessage(String::from("HARRIS 2")),
-    })
-    .await?;
-    conn.write(Request {
-        command: Command::ArchaicSendMessage(String::from("HARRIS 3")),
-    })
-    .await?;
-    conn.write(Request {
-        command: Command::ArchaicSendMessage(String::from("HARRIS 4")),
-    })
-    .await?;
-    conn.write(Request {
-        command: Command::ArchaicSendMessage(String::from("HARRIS 5")),
-    })
-    .await?;
+
+    tokio::time::sleep(Duration::from_millis(2000)).await;
 
     Ok(())
 }

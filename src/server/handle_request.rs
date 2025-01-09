@@ -1,14 +1,15 @@
-use std::sync::Arc;
+use std::{env, process, sync::Arc};
 
 use anyhow::Result;
 use tokio::sync::Mutex;
 
 use crate::transport::{conn::ConnWrite, request::ErrorLevel, Command, Request};
 
-use super::{userconn::UserConn, Server};
+use super::{handlers::login::handle_login_attempt, userconn::UserConn, Server};
 
+// FIX: Errors disappearing (not handled, just ignored in server.rs)
 pub async fn handle_request(
-    _server: Arc<Mutex<Server>>,
+    server: Arc<Mutex<Server>>,
     conn: Arc<UserConn>,
     request: Request,
 ) -> Result<()> {
@@ -31,6 +32,8 @@ pub async fn handle_request(
             .await?;
             Ok(())
         }
+
+        Command::LoginAttempt(login) => handle_login_attempt(server, conn, login).await,
 
         _ => {
             conn.write(Request {

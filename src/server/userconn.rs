@@ -12,6 +12,7 @@ use crate::transport::conn::{ConnRead, ConnWrite};
 
 #[derive(Debug, Clone)]
 pub struct UserConn {
+    pub id: Arc<Mutex<Option<i64>>>, // If None, the user is unauthenticated
     r: Arc<Mutex<OwnedReadHalf>>,
     w: Arc<Mutex<OwnedWriteHalf>>,
 }
@@ -20,6 +21,7 @@ impl UserConn {
     pub fn new(stream: TcpStream) -> Self {
         let (r, w) = stream.into_split();
         UserConn {
+            id: Arc::new(Mutex::new(None)),
             r: Arc::new(Mutex::new(r)),
             w: Arc::new(Mutex::new(w)),
         }

@@ -17,6 +17,9 @@ pub async fn handle_request(
         Command::NoOp => Ok(()),
 
         Command::ArchaicSendMessage(content) => {
+            if !is_auth(&conn).await {
+                return Ok(());
+            }
             log::info!("{}", content);
             conn.write(Request {
                 command: Command::Error("lorem impsum".into(), ErrorLevel::Info),
@@ -42,4 +45,17 @@ pub async fn handle_request(
             .await
         }
     }
+}
+
+async fn is_auth(conn: &UserConn) -> bool {
+    if conn.id.lock().await.is_none() {
+        log::info!("connection tried to do something while not authed");
+        let _ = conn // Don't really care if there's an error
+            .write(Request {
+                command: Command::Error("You must be logged in for this".into(), ErrorLevel::Fatal),
+            })
+            .await;
+        return false;
+    }
+    true
 }

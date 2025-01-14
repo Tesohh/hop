@@ -21,6 +21,10 @@ async fn main() -> anyhow::Result<()> {
         }),
     })
     .await?;
+    conn.write(Request {
+        command: Command::ArchaicSendMessage("harri".into()),
+    })
+    .await;
 
     tokio::time::sleep(Duration::from_millis(2000)).await;
 

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use crossterm::event::EventStream;
 use tokio::{
-    io::{AsyncBufReadExt as _, BufReader},
     net::TcpStream,
     sync::mpsc::{Receiver, Sender},
 };
@@ -10,8 +10,11 @@ use tokio::{
 use crate::transport::{conn::ConnRead, Request};
 
 use super::{
-    config::Config, handle_request::handle_request, handle_terminal::handle_terminal, ServerConn,
+    config::Config, handle_request::handle_request, handle_terminal_event::handle_terminal_event,
+    ServerConn,
 };
+
+use futures_util::StreamExt;
 
 pub async fn server_conn_task() -> Arc<ServerConn> {
     let stream = TcpStream::connect("localhost:3080")
@@ -39,14 +42,24 @@ pub async fn read_conn_task(conn: Arc<ServerConn>, tx: Sender<Request>) -> Resul
     conn.read(tx).await
 }
 
-pub async fn read_and_handle_terminal_task(conn: Arc<ServerConn>) -> Result<()> {
-    loop {
-        let mut buf = String::new();
-        let mut reader = BufReader::new(tokio::io::stdin());
-        reader.read_line(&mut buf).await?;
-        let line = buf.trim().to_string();
-        handle_terminal(conn.clone(), line).await?;
+// pub async fn read_and_handle_terminal_task(conn: Arc<ServerConn>) -> Result<()> {
+//     let mut reader = BufReader::new(tokio::io::stdin());
+//     loop {
+//         print!("hop > ");
+//         let mut buf = String::new();
+//         reader.read_line(&mut buf).await?;
+//         let line = buf.trim().to_string();
+//         handle_terminal(conn.clone(), line).await?;
+//     }
+// }
+
+pub async fn read_events(conn: Arc<ServerConn>) -> Result<()> {
+    let mut stream = EventStream::new();
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        handle_terminal_event(conn.clone(), event).await?;
     }
+    Ok(())
 }
 
 pub async fn handle_requests_task(conn: Arc<ServerConn>, mut rx: Receiver<Request>) -> Result<()> {

@@ -10,10 +10,13 @@ use tokio::{
 
 use crate::transport::conn::{ConnRead, ConnWrite};
 
+use super::screen::{Mode, Screen};
+
 #[derive(Debug, Clone)]
 pub struct ServerConn {
     r: Arc<Mutex<OwnedReadHalf>>,
     w: Arc<Mutex<OwnedWriteHalf>>,
+    pub screen: Arc<Mutex<Screen>>, // im so SORRY
 }
 
 impl ServerConn {
@@ -22,6 +25,7 @@ impl ServerConn {
         ServerConn {
             r: Arc::new(Mutex::new(r)),
             w: Arc::new(Mutex::new(w)),
+            screen: Arc::new(Mutex::new(Screen { mode: Mode::Normal })),
         }
     }
 }

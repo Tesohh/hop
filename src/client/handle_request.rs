@@ -14,7 +14,7 @@ pub async fn handle_request(_conn: Arc<ServerConn>, request: Request) -> Result<
             Ok(())
         }
         Command::ArchaicSendMessage(msg) => {
-            println!("{}", &msg);
+            println!("\r{}", &msg);
             Ok(())
         }
         Command::ClientDisconnect => todo!(),
